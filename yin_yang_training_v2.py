@@ -147,25 +147,32 @@ def update_synapse(ps_vals, timestep, spike_times, V, syn_weights):
     # num_synapses = 35
     exp_decay = np.exp(-0.1/12)
     # test_exp = np.exp(-0.1/1.8) - np.exp(-0.1/0.3)
-    current = np.empty([np.size(ps_vals), np.size(V)])
-
+    num_inputs = 2
     # for input in range(2):
     #     these_weights = syn_weights[input]
+    current = np.zeros([num_inputs, np.size(V)])
 
-    for synapse in range(np.size(ps_vals)):
-        ps_vals[synapse] *= exp_decay
-        these_spike_times = spike_times[synapse]
+    for input in range(num_inputs):
+        these_weights = syn_weights[input]
 
-        if timestep in these_spike_times:
-            ps_vals[synapse] += (1 - ps_vals[synapse])
+        for synapse in range(np.size(ps_vals,1)):
+            these_spike_times = spike_times[input][synapse][:]
 
-        if synapse < 25:
-            these_weights = syn_weights[0]
-        else:
-            these_weights = syn_weights[1]
+            ps_vals[input, synapse] *= exp_decay
+            # these_spike_times = spike_times[synapse]
 
-        for output in range(np.size(V)):
-            current[synapse, output] = (these_weights[output] / 1000) * ps_vals[synapse] * (0 - V[output])
+            if timestep in these_spike_times:
+                ps_vals[input, synapse] += (1 - ps_vals[input, synapse])
+
+            # if synapse < 25:
+            #     these_weights = syn_weights[0]
+            # else:
+            #     these_weights = syn_weights[1]
+
+            for output in range(np.size(V)):
+
+                # current[synapse, output] = (these_weights[output] / 1000) * ps_vals[input, synapse] * (0 - V[output])
+                current[input, output] += (these_weights[output] / 1000) * ps_vals[input, synapse] * (0 - V[output])
 
             # current[synapse] = (syn_weights[1]/1000) * ps_vals[synapse] * (0 - V)
 
@@ -316,7 +323,8 @@ def run_suimulation(freq1, freq2, syn_weights):
     num_outputs = 3
     num_synapses = 50
     total_time = 1
-
+    freq1 = 5
+    freq2 = 4
     spike_time_array_1 = []#np.zeros([num_synapses, firing_frequency])
     spike_time_array_2 = []
     spike_time_array = []
@@ -331,12 +339,13 @@ def run_suimulation(freq1, freq2, syn_weights):
         randomness1 = np.random.random(total_time * 10000 + 1) < (freq1 / 10000)
         randomness2 = np.random.random(total_time * 10000 + 1) < (freq2 / 10000)
 
-        spike_times = np.nonzero(randomness1)[0].tolist()
-        spike_times += np.nonzero(randomness2)[0].tolist()
+        # spike_times = np.nonzero(randomness1)[0].tolist()
+        # spike_times += np.nonzero(randomness2)[0].tolist()
 
-        # spike_time_array_1.append(np.nonzero(randomness1)[0].tolist())
-        # spike_time_array_2.append(np.nonzero(randomness2)[0].tolist())
-        spike_time_array_1.append(spike_times)
+        spike_time_array_1.append(np.nonzero(randomness1)[0].tolist())
+        spike_time_array_2.append(np.nonzero(randomness2)[0].tolist())
+
+        # spike_time_array_1.append(spike_times)
         # spike_times.append(1)
 
         # spike_time_array_2.append(spike_times)
@@ -344,12 +353,12 @@ def run_suimulation(freq1, freq2, syn_weights):
 
 
 
-    # spike_time_array.append(spike_time_array_1)
-    # spike_time_array.append(spike_time_array_2)
-    spike_time_array = spike_time_array_1
-    synapse_ps = np.zeros([num_synapses])
+    spike_time_array.append(spike_time_array_1)
+    spike_time_array.append(spike_time_array_2)
+    # spike_time_array = spike_time_array_1
+    # synapse_ps = np.zeros([num_synapses])
 
-    # synapse_ps = np.zeros([num_inputs, num_synapses])
+    synapse_ps = np.zeros([num_inputs, num_synapses])
 
     output_ps = np.zeros(num_neurons_hidden_layer)
 
@@ -397,12 +406,12 @@ def run_suimulation(freq1, freq2, syn_weights):
     refract = np.zeros(num_outputs)
 
     for neuron in range(num_neurons_hidden_layer):
-        # totG_soma[neuron], totGE_soma[neuron] = BREAKPOINT(m[neuron], h[neuron], n[neuron], V_soma[neuron])
-        # totG_soma[neuron], totGE_soma[neuron], m[neuron], n[neuron], h[neuron] = hh_lookup(V_soma[neuron], m[neuron], n[neuron], h[neuron], table)
-        totG_soma[neuron], totGE_soma[neuron], m[neuron], n[neuron], h[neuron] = gating_variables_hh(V_soma[neuron],
-                                                                                                     m[neuron],
-                                                                                                     n[neuron],
-                                                                                                     h[neuron], dt)
+        totG_soma[neuron], totGE_soma[neuron] = BREAKPOINT(m[neuron], h[neuron], n[neuron], V_soma[neuron])
+        totG_soma[neuron], totGE_soma[neuron], m[neuron], n[neuron], h[neuron] = hh_lookup(V_soma[neuron], m[neuron], n[neuron], h[neuron], table)
+        # totG_soma[neuron], totGE_soma[neuron], m[neuron], n[neuron], h[neuron] = gating_variables_hh(V_soma[neuron],
+        #                                                                                              m[neuron],
+        #                                                                                              n[neuron],
+        #                                                                                              h[neuron], dt)
     totGE_dend = np.zeros(num_neurons_hidden_layer)-70
     totG_dend = np.zeros(num_neurons_hidden_layer)+1
 
@@ -429,14 +438,19 @@ def run_suimulation(freq1, freq2, syn_weights):
             if neuron == 0:
                 dend_voltage_array.append(V_dend[neuron])
                 synaptic_current.append(i[neuron])
-                voltage_array.append(output_voltages[neuron])
+                voltage_array.append(V_soma[neuron])
 
 
             A_dCaAP[neuron], B_dCaAP[neuron], i[neuron], dCaAP_count[neuron], t_dCaAP[neuron], K[neuron], w = dCaAP(V_dend[neuron], t_dCaAP[neuron], dCaAP_count[neuron], A_dCaAP[neuron], B_dCaAP[neuron],  t - (dt / 2), dt, K[neuron], w)
             Ie[0] -= i[neuron] * 100
 
             # update somatic current
-            totG_soma[neuron], totGE_soma[neuron], m[neuron], n[neuron], h[neuron] = gating_variables_hh(V_soma[neuron], m[neuron], n[neuron], h[neuron], dt)
+            totG_soma[neuron], totGE_soma[neuron] = BREAKPOINT(m[neuron], h[neuron], n[neuron], V_soma[neuron])
+            totG_soma[neuron], totGE_soma[neuron], m[neuron], n[neuron], h[neuron] = hh_lookup(V_soma[neuron],
+                                                                                               m[neuron], n[neuron],
+                                                                                               h[neuron], table)
+            #
+            # totG_soma[neuron], totGE_soma[neuron], m[neuron], n[neuron], h[neuron] = gating_variables_hh(V_soma[neuron], m[neuron], n[neuron], h[neuron], dt)
 
             # print(V_dend)
             # update voltages
@@ -457,7 +471,6 @@ def run_suimulation(freq1, freq2, syn_weights):
         i_output = np.mean(i_output, 0)
 
         output_voltages, refract, spikes = LIF_neuron_update(output_voltages, dt, i_output, timestep, refract)
-
 
         output_1_spike_count += spikes[0]
         output_2_spike_count += spikes[1]
@@ -493,11 +506,11 @@ hidden_neurons = 5
 outputs = 3
 
 # initialise run parameters
-lr = 0.01
-dw = 0.5
+lr = 0.1
+dw = 0.7
 learning_steps = 40
-number_of_inputs = 100
-max_firing_rate = 55
+number_of_inputs = 130
+max_firing_rate = 60
 
 weights = []
 loss_array = []
@@ -505,7 +518,7 @@ gradient_array = []
 output_array = []
 mean_gradient_array = []
 
-weights.append(np.zeros([inputs, hidden_neurons])+4)
+weights.append(np.zeros([inputs, hidden_neurons])+2)
 weights.append(np.zeros([hidden_neurons, outputs])+2)
 loss_array.append(np.zeros([inputs, hidden_neurons, number_of_inputs]))
 loss_array.append(np.zeros([hidden_neurons, outputs, number_of_inputs]))
@@ -574,6 +587,7 @@ for trial in range(number_of_inputs):
                 normalised_output = [(these_outputs[0]/max_firing_rate), (these_outputs[1]/max_firing_rate), (these_outputs[2]/max_firing_rate)]
                 output_array[layer][input][synapse][:] = normalised_output
                 this_loss = 0
+
                 for out in range(outputs):
                     # this_loss -= target_freq[out] * np.log(normalised_output[out])
                     this_loss += (target_freq[out] - normalised_output[out])
